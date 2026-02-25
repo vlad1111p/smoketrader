@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pandas as pd
@@ -13,7 +13,7 @@ class ParquetBarStore:
 
     Index must be a DatetimeIndex (ideally tz-aware).
     """
-    root: Path = Path("data/bars")
+    root: Path = field(default_factory=lambda: Path(__file__).resolve().parent / "bars")
 
     def _path(self, symbol: str, interval: str) -> Path:
         self.root.mkdir(parents=True, exist_ok=True)
