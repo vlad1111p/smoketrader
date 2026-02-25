@@ -7,7 +7,6 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 import yfinance as yf
 
-from data.bar_builder import MinuteBarBuilder
 from data.store import ParquetBarStore
 from data.stream_pipeline import StreamPipeline
 from data.yahoo_live import YahooLiveClient
@@ -60,35 +59,15 @@ def main() -> None:
     store = ParquetBarStore()
     strategy = SimpleRsiEmaMacdStrategy()
 
-    # preload history (same as before)
     for s in symbols:
         hist = yf.Ticker(s).history(period="7d", interval=interval, prepost=True)
         if hist is not None and not hist.empty:
             store.upsert(s, interval, hist[["Open", "High", "Low", "Close", "Volume"]])
 
-    # create pipeline first (needs builder), but builder needs pipeline callback:
-    # easiest: create builder with pipeline callback after pipeline exists.
-    # So: create a dummy builder first, then replace? Instead we do a 2-step:
-    # 1) create builder with a placeholder lambda
-    # 2) create pipeline
-    # 3) wire builder.on_bar_close to pipeline._on_bar_close by recreating builder
-    # We'll do the cleanest: create pipeline after builder, but pass pipeline._on_bar_close using a forward-declared function.
-
-    # forward declaration holder
-    pipeline_ref = {"pipeline": None}
-
-    def bar_close_proxy(symbol: str, bar_df: pd.DataFrame) -> None:
-        pipeline_ref["pipeline"]._on_bar_close(symbol, bar_df)
-
-    builder = MinuteBarBuilder(
-        on_bar_close=bar_close_proxy,
-        debug_ticks=False,
+    pipeline = StreamPipeline(
         emit_empty_minutes=True,
         close_grace_seconds=2.0,
     )
-
-    pipeline = StreamPipeline(builder=builder)
-    pipeline_ref["pipeline"] = pipeline
 
     pipeline.add_pre_tick(tick_logger)
     pipeline.add_on_bar_close(make_bar_close_handler(store, interval, strategy))

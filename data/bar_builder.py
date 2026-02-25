@@ -33,12 +33,10 @@ class MinuteBarBuilder:
     def __init__(
             self,
             on_bar_close: Callable[[str, pd.DataFrame], None],
-            debug_ticks: bool = True,
             emit_empty_minutes: bool = True,
             close_grace_seconds: float = 2.0,
     ):
         self.on_bar_close = on_bar_close
-        self.debug_ticks = debug_ticks
         self.emit_empty_minutes = emit_empty_minutes
         self.close_grace_seconds = float(close_grace_seconds)
 
@@ -157,14 +155,9 @@ class MinuteBarBuilder:
                     self._advance_to(sym, cutoff_minute)
 
     def on_message(self, message: dict) -> None:
-
         sym = self._parse_symbol(message)
         price = self._parse_price(message)
         ts = self._parse_ts(message)
-
-        if self.debug_ticks:
-            ts_str = ts.isoformat() if ts is not None else "NO_TS"
-            print(f"TICK [{sym}] [{ts_str}] price={price} raw={message}")
 
         if not sym or price is None or ts is None:
             return

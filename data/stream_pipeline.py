@@ -20,20 +20,25 @@ class BarCloseHandler(Protocol):
 @dataclass
 class StreamPipeline:
     """
-    Orchestrates the streaming pipeline.
+    Root pipeline object.
+    - pass `pipeline.on_message` to the websocket client
+    - call `pipeline.on_timer` from heartbeat
 
-    You pass:
-      - pipeline.on_message to the websocket client
-      - pipeline.on_timer to a heartbeat loop
-
-    Internally it delegates bar-building to MinuteBarBuilder,
-    but lets you attach arbitrary tick/bar handlers without modifying the builder.
+    Internally uses MinuteBarBuilder, but lets you add more handlers over time.
     """
-    builder: MinuteBarBuilder
+    emit_empty_minutes: bool = True
+    close_grace_seconds: float = 2.0
 
     pre_tick_handlers: List[TickHandler] = field(default_factory=list)
     post_tick_handlers: List[TickHandler] = field(default_factory=list)
     bar_close_handlers: List[BarCloseHandler] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.builder = MinuteBarBuilder(
+            on_bar_close=self.on_bar_close,
+            emit_empty_minutes=self.emit_empty_minutes,
+            close_grace_seconds=self.close_grace_seconds,
+        )
 
     def add_pre_tick(self, h: TickHandler) -> None:
         self.pre_tick_handlers.append(h)
@@ -56,6 +61,6 @@ class StreamPipeline:
     def on_timer(self, now_utc: Optional[datetime] = None) -> None:
         self.builder.on_timer(now_utc)
 
-    def _on_bar_close(self, symbol: str, bar_df: pd.DataFrame) -> None:
+    def on_bar_close(self, symbol: str, bar_df: pd.DataFrame) -> None:
         for h in self.bar_close_handlers:
             h(symbol, bar_df)
