@@ -71,7 +71,7 @@ def main() -> None:
 
     pipeline.add_pre_tick(tick_logger)
     pipeline.add_on_bar_close(make_bar_close_handler(store, interval, strategy))
-
+    pipeline.start()
     stop = threading.Event()
 
     def heartbeat():
@@ -88,6 +88,7 @@ def main() -> None:
     finally:
         stop.set()
         t.join(timeout=1.0)
+        pipeline.stop()
 
 
 if __name__ == "__main__":

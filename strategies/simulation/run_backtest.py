@@ -11,6 +11,9 @@ def main() -> None:
 
     store = ParquetBarStore()
     df = store.load(symbol, interval)
+    
+    print(df)
+
     if df is None or df.empty:
         print(f"No data found for {symbol} {interval}. Run yahoo_stream_to_store first.")
         return
@@ -18,7 +21,7 @@ def main() -> None:
     bt = Backtester(
         BacktestConfig(
             initial_cash=100.0,
-            fee_rate=0.001,
+            fee_rate=0.0,
             allow_fractional=True,
             execution="next_open",
             force_flat_at_end=True,
